@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# 虚拟环境
+.venv/
+venv/
+ENV/
+
+# 环境变量与敏感文件
+.env
+*.key
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 缓存与临时文件
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+data/cache/
+test_cache/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 备份文件
+*.backup
+README.md.backup
+
+# 测试/临时文件
+test_mcp_search.py
+test_timeout_fixes.py
+
+# Coverage reports
+coverage.xml
+*.cover
+.hypothesis/

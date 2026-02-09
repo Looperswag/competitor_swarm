@@ -1,0 +1,154 @@
+# CompetitorSwarm Configuration
+
+model:
+  name: "glm-4.7"
+  temperature: 0.7
+  max_tokens: 4096
+  thinking_mode: true
+  timeout: 120.0  # LLM 请求超时时间（秒）
+
+cache:
+  enabled: true
+  ttl: 3600  # seconds
+  path: "data/cache"
+
+scheduler:
+  max_concurrent: 4
+  timeout: 600  # seconds per agent (increased from 300 to 600 to handle search-intensive agents)
+
+# 搜索配置
+search:
+  # 搜索提供商: "multi" (多源), "mcp" (Tavily MCP), "mcp_hybrid" (MCP + Skill 降级)
+  provider: "multi"
+  # 请将您的 Tavily API Key 设置到环境变量 TAVILY_API_KEY 中
+  # 获取 API Key: https://tavily.com/
+  # Tavily Remote MCP: https://mcp.tavily.com/mcp/?tavilyApiKey=YOUR_KEY
+  api_key: ""  # 留空则从环境变量 TAVILY_API_KEY 读取
+  default_time_range: "oneYear"
+  max_results: 10
+
+  # 多源搜索配置
+  multi_source:
+    aggregation_mode: "priority"  # priority(优先)/parallel(并行)/all(全部)
+    max_parallel_providers: 2
+    deduplication_enabled: true
+    cache_enabled: true
+    cache_ttl: 3600  # 缓存过期时间（秒）
+    quota_enabled: true  # 是否启用配额管理
+
+  # 各搜索源配置
+  providers:
+    tavily:
+      enabled: true
+      priority: 100
+      daily_quota: 1000
+      rate_limit: null  # 无速率限制
+      api_key_env: "TAVILY_API_KEY"
+    duckduckgo:
+      enabled: true
+      priority: 10
+      daily_quota: 0  # 0 表示无限制
+      rate_limit: null
+    wikipedia:
+      enabled: true
+      priority: 20
+      daily_quota: 0
+      rate_limit: null
+
+  # Agent 特定的搜索配置
+  agent_profiles:
+    scout:
+      preferred_providers: ["tavily", "duckduckgo", "wikipedia"]
+      max_results: 15
+      aggregation_mode: null  # 使用全局配置
+    experience:
+      preferred_providers: ["tavily", "duckduckgo"]
+      max_results: 10
+    technical:
+      preferred_providers: ["tavily", "duckduckgo"]
+      max_results: 10
+    market:
+      preferred_providers: ["tavily", "duckduckgo"]
+      max_results: 20
+      aggregation_mode: "parallel"  # 市场分析使用并行模式
+    red_team:
+      preferred_providers: ["tavily", "duckduckgo"]
+      max_results: 10
+    blue_team:
+      preferred_providers: ["tavily", "wikipedia"]  # 蓝队使用百科信息
+      max_results: 10
+    elite:
+      preferred_providers: ["tavily", "duckduckgo", "wikipedia"]
+      max_results: 15
+      aggregation_mode: "parallel"
+
+# Agent 结果数量配置
+discovery_limits:
+  min_per_agent: 15
+  target_per_agent: 30
+  max_per_agent: 50
+
+agents:
+  scout:
+    name: "侦察专家"
+    min_discoveries: 15
+    target_discoveries: 30
+    max_discoveries: 50
+    # system_prompt 已移至 prompts/scout.md
+
+  experience:
+    name: "体验专家"
+    min_discoveries: 15
+    target_discoveries: 30
+    max_discoveries: 50
+    # system_prompt 已移至 prompts/experience.md
+
+  technical:
+    name: "技术分析专家"
+    min_discoveries: 20
+    target_discoveries: 30
+    max_discoveries: 50
+    # system_prompt 已移至 prompts/technical.md
+
+  market:
+    name: "市场分析专家"
+    min_discoveries: 20
+    target_discoveries: 30
+    max_discoveries: 50
+    # system_prompt 已移至 prompts/market.md
+
+  red_team:
+    name: "红队专家"
+    min_discoveries: 15
+    target_discoveries: 30
+    max_discoveries: 50
+    # system_prompt 已移至 prompts/red_team.md
+
+  blue_team:
+    name: "蓝队专家"
+    min_discoveries: 15
+    target_discoveries: 30
+    max_discoveries: 50
+    # system_prompt 已移至 prompts/blue_team.md
+
+  elite:
+    name: "综合分析专家"
+    min_discoveries: 5
+    target_discoveries: 10
+    max_discoveries: 20
+    # system_prompt 已移至 prompts/elite.md
+
+output:
+  path: "output"
+  format: "markdown"
+  include_metadata: true
+  include_appendix: true  # 是否包含附录
+  html_enabled: true  # 是否生成 HTML 报告
+  json_enabled: false  # 是否生成 JSON 数据
+
+# Web 服务器配置
+web:
+  enabled: true  # 是否启用 Web 服务
+  host: "127.0.0.1"  # 监听地址
+  port: 8000  # 监听端口
+  reload: false  # 开发模式自动重载
