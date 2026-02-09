@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Status](https://img.shields.io/badge/Status-Active-success)
 
-基于 Swarm 模式的多 Agent 竞品分析系统，通过异构 Agent 协作实现多维度、深度的竞品分析。
+基于 **Swarm 模式** 的多 Agent 竞品分析系统，通过异构 Agent 协作实现多维度、深度的竞品分析。
 
 ---
 
