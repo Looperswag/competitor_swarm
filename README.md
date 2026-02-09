@@ -163,17 +163,17 @@ python main.py analyze "Notion"
 **预期输出**
 
 ```
-[2024-xx-xx xx:xx:xx] 开始分析: Notion
-[2024-xx-xx xx:xx:xx] Phase 1: 信息收集 (并行执行 4 个 Agent)
-[2024-xx-xx xx:xx:xx]   🔍 侦察 Agent 完成
-[2024-xx-xx xx:xx:xx]   🎨 体验 Agent 完成
-[2024-xx-xx xx:xx:xx]   🔬 技术 Agent 完成
-[2024-xx-xx xx:xx:xx]   📊 市场 Agent 完成
-[2024-xx-xx xx:xx:xx] Phase 2: 交叉验证
-[2024-xx-xx xx:xx:xx] Phase 3: 红蓝队对抗
-[2024-xx-xx xx:xx:xx] Phase 4: 报告综合
-[2024-xx-xx xx:xx:xx] 分析完成！耗时: XX 秒
-[2024-xx-xx xx:xx:xx] 报告已保存到: output/analysis_Notion_xxxxxx.md
+[2026-xx-xx xx:xx:xx] 开始分析: Notion
+[2026-xx-xx xx:xx:xx] Phase 1: 信息收集 (并行执行 4 个 Agent)
+[2026-xx-xx xx:xx:xx]   🔍 侦察 Agent 完成
+[2026-xx-xx xx:xx:xx]   🎨 体验 Agent 完成
+[2026-xx-xx xx:xx:xx]   🔬 技术 Agent 完成
+[2026-xx-xx xx:xx:xx]   📊 市场 Agent 完成
+[2026-xx-xx xx:xx:xx] Phase 2: 交叉验证
+[2026-xx-xx xx:xx:xx] Phase 3: 红蓝队对抗
+[2026-xx-xx xx:xx:xx] Phase 4: 报告综合
+[2026-xx-xx xx:xx:xx] 分析完成！耗时: XX 秒
+[2026-xx-xx xx:xx:xx] 报告已保存到: output/analysis_Notion_xxxxxx.md
 ```
 
 ### 第五步：查看报告
