@@ -45,7 +45,7 @@ pip install -r requirements.txt
 
 ### 第二步：获取 API Key
 
-1. 访问 [智谱开放平台](https://open.bigmodel.cn/) 注册账号
+1. 访问 [智谱开放平台](https://open.bigmodel.cn/) 注册账号（我用的是GLM-5）
 2. 获取 API Key（格式类似：`xxxx.xxxxxx`）
 3. （可选）获取 [Tavily](https://tavily.com/) API Key 用于实时搜索
 
