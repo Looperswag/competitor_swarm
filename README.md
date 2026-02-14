@@ -181,7 +181,7 @@ python main.py cache clear
 
 ---
 
-## ✨ 为什么选择 CompetitorSwarm
+## ✨ WHY CompetitorSwarm
 
 | 维度 | 传统竞品分析工具 | CompetitorSwarm |
 |------|------------------|-----------------|
