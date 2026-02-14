@@ -6,20 +6,178 @@
 
 基于 **Swarm 模式** 的多 Agent 竞品分析系统，通过异构 Agent 协作实现多维度、深度的竞品分析。
 
-> 当前定位：**研究原型 / 内部分析工具**
-> 在网络抖动、搜索源限流或重试场景下，耗时和结果完整性会波动。
-
 ---
 
 ## 📑 快速导航
 
 | 章节 | 描述 |
 |------|------|
-| [为什么选择 CompetitorSwarm](#-为什么选择-competitorswarm) | 与传统工具对比 |
+| [快速开始](#-0-1-快速开始) | 5 步上手指南 |
+| [Why CompetitorSwarm](#-为什么选择-competitorswarm) | 与传统工具对比 |
 | [核心架构特点](#-核心架构特点) | Stigmergy、虚拟信息素等创新点 |
 | [数据流动详解](#-数据流动详解) | 四阶段完整数据流 |
 | [核心模块交互](#-核心模块交互) | 模块依赖关系图 |
-| [快速开始](#-0-1-快速开始) | 5 步上手指南 |
+
+
+---
+
+## 🚀 0-1 快速开始
+
+### 第一步：环境准备
+
+**检查 Python 版本**
+
+```bash
+python --version  # 需要 3.10+
+```
+
+**进入项目目录**
+
+```bash
+cd competitor_swarm
+```
+
+**安装依赖**
+
+```bash
+pip install -r requirements.txt
+```
+
+### 第二步：获取 API Key
+
+1. 访问 [智谱开放平台](https://open.bigmodel.cn/) 注册账号
+2. 获取 API Key（格式类似：`xxxx.xxxxxx`）
+3. （可选）获取 [Tavily](https://tavily.com/) API Key 用于实时搜索
+
+### 第三步：配置项目
+
+```bash
+# 复制模板文件
+cp .env.example .env
+
+# 编辑 .env 文件
+ZHIPUAI_API_KEY=你的API_Key
+TAVILY_API_KEY=你的Tavily_Key  # 可选
+```
+
+### 第四步：第一次运行
+
+**先检查环境**
+
+```bash
+python main.py check-env
+```
+
+预期至少应看到：
+
+```text
+✓ ZHIPUAI_API_KEY 已设置
+✓ 配置文件加载成功
+✓ 缓存目录可写
+✓ 输出目录可写
+✓ LLM 客户端初始化成功
+```
+
+**再执行分析**
+
+```bash
+python main.py analyze "Notion"
+```
+
+**预期输出**
+
+```
+[2026-xx-xx xx:xx:xx] 开始分析: Notion
+[2026-xx-xx xx:xx:xx] Phase 1: 信息收集 (并行执行 4 个 Agent)
+[2026-xx-xx xx:xx:xx]   🔍 侦察 Agent 完成
+[2026-xx-xx xx:xx:xx]   🎨 体验 Agent 完成
+[2026-xx-xx xx:xx:xx]   🔬 技术 Agent 完成
+[2026-xx-xx xx:xx:xx]   📊 市场 Agent 完成
+[2026-xx-xx xx:xx:xx] Phase 2: 交叉验证
+[2026-xx-xx xx:xx:xx] Phase 3: 红蓝队对抗
+[2026-xx-xx xx:xx:xx] Phase 4: 报告综合
+[2026-xx-xx xx:xx:xx] 分析完成！耗时: XX 秒
+[2026-xx-xx xx:xx:xx] 报告已保存到: output/analysis_Notion_xxxxxx.md
+```
+
+### 第五步：查看报告
+
+```bash
+# macOS
+open output/analysis_Notion_*.md
+
+# Linux
+xdg-open output/analysis_Notion_*.md
+```
+
+---
+
+## 📖 使用指南
+
+### 环境检查
+
+```bash
+python main.py check-env
+```
+
+### 基本分析
+
+```bash
+python main.py analyze "Notion"
+```
+
+### 对比分析
+
+```bash
+python main.py analyze "Notion" -c "飞书文档" -c "Wolai"
+```
+
+### 指定关注领域
+
+```bash
+python main.py analyze "Notion" -f "协作功能" -f "定价策略"
+```
+
+### 指定输出格式
+
+支持 **4 种输出格式**：
+
+```bash
+# Markdown 格式（默认）
+python main.py analyze "Notion"
+
+# HTML 可视化报告
+python main.py analyze "Notion" --format html
+
+# JSON 数据格式
+python main.py analyze "Notion" --format json
+
+# 生成所有格式
+python main.py analyze "Notion" --format all
+```
+
+### 保存报告
+
+```bash
+python main.py analyze "Notion" -o my_report.md
+```
+
+### 缓存管理
+
+```bash
+# 查看缓存状态
+python main.py cache status
+
+# 保存缓存
+python main.py cache save filename.json
+
+# 加载缓存
+python main.py cache load filename.json
+
+# 清除缓存
+python main.py cache clear
+```
+
 
 ---
 
@@ -336,164 +494,6 @@ Signal(
 | **多源搜索** | 多数据源聚合，自动降级 | `MultiSourceSearchTool` |
 | **量化验证** | 数值声明跨源验证 | `QuantitativeValidator` |
 
----
-
-## 🚀 0-1 快速开始
-
-### 第一步：环境准备
-
-**检查 Python 版本**
-
-```bash
-python --version  # 需要 3.10+
-```
-
-**进入项目目录**
-
-```bash
-cd competitor_swarm
-```
-
-**安装依赖**
-
-```bash
-pip install -r requirements.txt
-```
-
-### 第二步：获取 API Key
-
-1. 访问 [智谱开放平台](https://open.bigmodel.cn/) 注册账号
-2. 获取 API Key（格式类似：`xxxx.xxxxxx`）
-3. （可选）获取 [Tavily](https://tavily.com/) API Key 用于实时搜索
-
-### 第三步：配置项目
-
-```bash
-# 复制模板文件
-cp .env.example .env
-
-# 编辑 .env 文件
-ZHIPUAI_API_KEY=你的API_Key
-TAVILY_API_KEY=你的Tavily_Key  # 可选
-```
-
-### 第四步：第一次运行
-
-**先检查环境**
-
-```bash
-python main.py check-env
-```
-
-预期至少应看到：
-
-```text
-✓ ZHIPUAI_API_KEY 已设置
-✓ 配置文件加载成功
-✓ 缓存目录可写
-✓ 输出目录可写
-✓ LLM 客户端初始化成功
-```
-
-**再执行分析**
-
-```bash
-python main.py analyze "Notion"
-```
-
-**预期输出**
-
-```
-[2026-xx-xx xx:xx:xx] 开始分析: Notion
-[2026-xx-xx xx:xx:xx] Phase 1: 信息收集 (并行执行 4 个 Agent)
-[2026-xx-xx xx:xx:xx]   🔍 侦察 Agent 完成
-[2026-xx-xx xx:xx:xx]   🎨 体验 Agent 完成
-[2026-xx-xx xx:xx:xx]   🔬 技术 Agent 完成
-[2026-xx-xx xx:xx:xx]   📊 市场 Agent 完成
-[2026-xx-xx xx:xx:xx] Phase 2: 交叉验证
-[2026-xx-xx xx:xx:xx] Phase 3: 红蓝队对抗
-[2026-xx-xx xx:xx:xx] Phase 4: 报告综合
-[2026-xx-xx xx:xx:xx] 分析完成！耗时: XX 秒
-[2026-xx-xx xx:xx:xx] 报告已保存到: output/analysis_Notion_xxxxxx.md
-```
-
-### 第五步：查看报告
-
-```bash
-# macOS
-open output/analysis_Notion_*.md
-
-# Linux
-xdg-open output/analysis_Notion_*.md
-```
-
----
-
-## 📖 使用指南
-
-### 环境检查
-
-```bash
-python main.py check-env
-```
-
-### 基本分析
-
-```bash
-python main.py analyze "Notion"
-```
-
-### 对比分析
-
-```bash
-python main.py analyze "Notion" -c "飞书文档" -c "Wolai"
-```
-
-### 指定关注领域
-
-```bash
-python main.py analyze "Notion" -f "协作功能" -f "定价策略"
-```
-
-### 指定输出格式
-
-支持 **4 种输出格式**：
-
-```bash
-# Markdown 格式（默认）
-python main.py analyze "Notion"
-
-# HTML 可视化报告
-python main.py analyze "Notion" --format html
-
-# JSON 数据格式
-python main.py analyze "Notion" --format json
-
-# 生成所有格式
-python main.py analyze "Notion" --format all
-```
-
-### 保存报告
-
-```bash
-python main.py analyze "Notion" -o my_report.md
-```
-
-### 缓存管理
-
-```bash
-# 查看缓存状态
-python main.py cache status
-
-# 保存缓存
-python main.py cache save filename.json
-
-# 加载缓存
-python main.py cache load filename.json
-
-# 清除缓存
-python main.py cache clear
-```
 
 ---
 
@@ -536,80 +536,6 @@ python main.py analyze "TiDB" \
 
 ---
 
-## 🔧 配置说明
-
-### config.yaml
-
-```yaml
-model:
-  name: "glm-4.7"              # 使用的模型（glm-4.7）
-  temperature: 1.0              # 温度参数（GLM-5 默认值）
-  max_tokens: 4096              # 最大输出 token
-  thinking_mode: true           # 思考模式（GLM-5 默认开启）
-
-# 搜索配置
-search:
-  provider: "multi"             # 搜索提供商
-  api_key: ""                   # 从环境变量 TAVILY_API_KEY 读取
-  max_results: 10               # 每次搜索最大结果数
-
-  # 多源搜索配置
-  multi_source:
-    aggregation_mode: "priority" # priority(优先)/parallel(并行)/all(全部)
-    deduplication_enabled: true
-
-  # 各搜索源配置
-  providers:
-    tavily:
-      enabled: true
-      priority: 100
-    duckduckgo:
-      enabled: true
-      priority: 10
-    wikipedia:
-      enabled: true
-      priority: 20
-
-# Agent 结果数量配置
-discovery_limits:
-  min_per_agent: 15             # 每个 Agent 最少发现数量
-  target_per_agent: 30          # 每个 Agent 目标发现数量
-  max_per_agent: 50             # 每个 Agent 最大发现数量
-
-# 四阶段执行策略配置
-phase_executor:
-  validation:
-    min_confidence: 0.30        # 交叉验证最低置信度
-    min_strength: 0.00          # 交叉验证最低强度
-    min_weighted_score: 0.35    # 置信度/强度加权最低分
-    confidence_weight: 0.70     # 加权时置信度权重
-    strength_weight: 0.30       # 加权时强度权重
-    max_signals_per_dimension: 20
-    verification_boost: 0.03    # 验证通过后的强度增量
-  debate:
-    rounds: 3                   # 红蓝对抗轮数
-    strength_step: 0.05         # 单位相关性对应的强度调整步长
-    round_decay: 0.85           # 后续轮次影响衰减
-    max_adjustment: 0.20        # 单个信号最大调整幅度
-    max_points_per_round: 10    # 每轮最多采纳观点数
-    verified_only: true         # 是否仅调整已验证信号
-    llm_batch_size: 10          # LLM 批量裁决大小
-    llm_max_tokens: 128         # 裁决请求输出上限
-    llm_temperature: 0.0        # 裁决请求温度（建议固定为 0）
-
-cache:
-  enabled: true                 # 启用缓存
-  ttl: 3600                     # 缓存过期时间（秒）
-
-scheduler:
-  max_concurrent: 4             # 最大并发 Agent 数
-  timeout: 600                  # 单个 Agent 超时（秒）
-
-web:
-  sync_timeout_seconds: 300     # /api/analyze 同步超时预算
-  async_job_workers: 2          # 异步任务 worker 数
-  async_job_ttl_seconds: 3600   # 任务状态保留时长（秒）
-```
 
 ### Web API（长任务推荐异步）
 
@@ -634,13 +560,6 @@ pytest --cov=src --cov-report=term-missing
 
 ---
 
-## 📚 技术栈
-
-- **语言**: Python 3.10+
-- **LLM**: GLM API (glm-4.7)
-- **并发**: asyncio
-- **CLI**: Click
-- **测试**: pytest
 
 ### 核心模块
 
@@ -655,55 +574,4 @@ src/
 └── reporter.py      # 报告生成器
 ```
 
----
 
-## 💰 成本估算
-
-使用 GLM-5 模型的参考成本（具体请参考智谱AI官方定价）：
-
-- 输入: ¥0.5 / 1M tokens（参考）
-- 输出: ¥2.0 / 1M tokens（参考）
-
-**单次完整分析（7 个 Agent）估算：**
-- 约 50K 输入 tokens
-- 约 20K 输出 tokens
-- 成本约 **¥0.065 / 次**
-
----
-
-## 常见问题
-
-### API 相关
-
-**Q: 提示 "API Key 无效"**
-- 检查 `.env` 文件中的 API Key 是否正确
-- 确保没有多余空格或引号
-
-**Q: 提示 "余额不足"**
-- 单次分析成本约 ¥0.065
-- 建议先充值 ¥10-50 进行测试
-
-### 搜索功能
-
-**Q: 搜索结果为空**
-- 检查网络连接
-- 确认 `TAVILY_API_KEY` 已配置
-- 系统会自动降级使用内置搜索
-
-### 性能问题
-
-**Q: 分析时间过长**
-- 正常情况下：简单分析 1-2 分钟，完整分析 3-5 分钟
-- 可在 `config.yaml` 中降低 `target_per_agent` 数量
-
----
-
-## 📄 License
-
-MIT
-
----
-
-<p align="center">
-  <i>从 Swarm 智慧到商业洞察，让竞品分析进入自动化时代</i>
-</p>
