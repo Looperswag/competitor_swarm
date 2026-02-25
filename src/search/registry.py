@@ -71,18 +71,21 @@ class SearchProviderRegistry:
         if factory is None:
             return None
 
-        # 返回单例或创建新实例
+        # 返回单例或创建新实例（加锁避免并发重复初始化）
         if not force_new and provider_type in self._singletons:
             return self._singletons[provider_type]
 
-        try:
-            instance = factory() if callable(factory) else factory
-            if not force_new:
-                self._singletons[provider_type] = instance
-            return instance
-        except Exception as e:
-            logger.warning(f"Failed to create provider {provider_type}: {e}")
-            return None
+        with self._lock:
+            if not force_new and provider_type in self._singletons:
+                return self._singletons[provider_type]
+            try:
+                instance = factory() if callable(factory) else factory
+                if not force_new:
+                    self._singletons[provider_type] = instance
+                return instance
+            except Exception as e:
+                logger.warning(f"Failed to create provider {provider_type}: {e}")
+                return None
 
     def list_available(self) -> list[SearchProviderType]:
         """列出所有已注册的搜索源类型。

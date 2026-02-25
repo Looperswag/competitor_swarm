@@ -4,6 +4,7 @@
 使用 Signal 结构（新版本）进行信息收集。
 """
 
+import asyncio
 from typing import Any
 
 from src.agents.base import BaseAgent, AgentType, AgentResult, DiscoverySource
@@ -45,6 +46,7 @@ class TechnicalAgent(BaseAgent):
         Returns:
             Agent 执行结果
         """
+        self._reset_runtime_diagnostics()
         target = context.get("target", "")
 
         if not target:
@@ -53,7 +55,7 @@ class TechnicalAgent(BaseAgent):
                 agent_name=self.name,
                 discoveries=[],
                 handoffs_created=0,
-                metadata={"error": "No target specified"},
+                metadata=self._augment_metadata({"error": "No target specified"}),
             )
 
         # 检查是否有 handoff 上下文
@@ -84,25 +86,94 @@ class TechnicalAgent(BaseAgent):
             discovery_count = len(discoveries)
 
         # 第五步：确保最小发现数量
-        discoveries = self._ensure_min_discoveries(
-            discoveries,
-            target,
-            context,
-            self._build_deep_search_prompt,
-        )
+        if self.USE_SIGNALS and SIGNALS_AVAILABLE:
+            discoveries = self._ensure_min_signals(
+                discoveries,
+                target,
+                context,
+                self._build_deep_search_prompt,
+            )
+        else:
+            discoveries = self._ensure_min_discoveries(
+                discoveries,
+                target,
+                context,
+                self._build_deep_search_prompt,
+            )
 
         return AgentResult(
             agent_type=self.agent_type.value,
             agent_name=self.name,
             discoveries=discoveries,
             handoffs_created=0,
-            metadata={
+            metadata=self._augment_metadata({
                 "target": target,
                 "from_handoff": handoff_context is not None,
                 "discovery_count": discovery_count,
                 "search_used": bool(search_context),
                 "use_signals": self.USE_SIGNALS and SIGNALS_AVAILABLE,
-            },
+            }),
+        )
+
+    async def execute_async(self, **context: Any) -> AgentResult:
+        """异步执行技术分析任务。"""
+        self._reset_runtime_diagnostics()
+        target = context.get("target", "")
+
+        if not target:
+            return AgentResult(
+                agent_type=self.agent_type.value,
+                agent_name=self.name,
+                discoveries=[],
+                handoffs_created=0,
+                metadata=self._augment_metadata({"error": "No target specified"}),
+            )
+
+        handoff_context = context.get("_handoff")
+
+        search_context = await asyncio.to_thread(self._get_search_context, target)
+        if search_context:
+            context["_search_context"] = search_context
+
+        prompt = self._build_technical_prompt(target, handoff_context, bool(search_context))
+        response = await self.think_with_discoveries_async(
+            prompt,
+            agent_types=["scout"],
+            context=context,
+        )
+
+        if self.USE_SIGNALS and SIGNALS_AVAILABLE:
+            signals = self._parse_and_store_signals(response, target)
+            discoveries = [s.to_dict() for s in signals]
+            discovery_count = len(signals)
+            discoveries = await self._ensure_min_signals_async(
+                discoveries,
+                target,
+                context,
+                self._build_deep_search_prompt,
+            )
+        else:
+            discoveries = self._parse_and_store_discoveries(response, target)
+            discovery_count = len(discoveries)
+            discoveries = await self._ensure_min_discoveries_async(
+                discoveries,
+                target,
+                context,
+                self._build_deep_search_prompt,
+            )
+
+        return AgentResult(
+            agent_type=self.agent_type.value,
+            agent_name=self.name,
+            discoveries=discoveries,
+            handoffs_created=0,
+            metadata=self._augment_metadata({
+                "target": target,
+                "from_handoff": handoff_context is not None,
+                "discovery_count": discovery_count,
+                "search_used": bool(search_context),
+                "use_signals": self.USE_SIGNALS and SIGNALS_AVAILABLE,
+            }),
         )
 
     def _get_search_context(self, target: str) -> str:

@@ -76,7 +76,7 @@ def sample_config():
     return Config(
         model=ModelConfig(
             name="glm-4.7",
-            temperature=0.7,
+            temperature=1.0,
             max_tokens=4096,
             thinking_mode=True,
         ),

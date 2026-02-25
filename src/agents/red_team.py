@@ -3,6 +3,7 @@
 负责批判性分析，找出产品的潜在问题。
 """
 
+import asyncio
 from typing import Any
 
 from src.agents.base import BaseAgent, AgentType, AgentResult, DiscoverySource
@@ -34,6 +35,7 @@ class RedTeamAgent(BaseAgent):
         Returns:
             Agent 执行结果
         """
+        self._reset_runtime_diagnostics()
         target = context.get("target", "")
 
         if not target:
@@ -42,7 +44,7 @@ class RedTeamAgent(BaseAgent):
                 agent_name=self.name,
                 discoveries=[],
                 handoffs_created=0,
-                metadata={"error": "No target specified"},
+                metadata=self._augment_metadata({"error": "No target specified"}),
             )
 
         # 第一步：获取搜索上下文
@@ -76,11 +78,56 @@ class RedTeamAgent(BaseAgent):
             agent_name=self.name,
             discoveries=[d.to_dict() for d in discoveries],
             handoffs_created=0,
-            metadata={
+            metadata=self._augment_metadata({
                 "target": target,
                 "discovery_count": len(discoveries),
                 "search_used": bool(search_context),
-            },
+            }),
+        )
+
+    async def execute_async(self, **context: Any) -> AgentResult:
+        """异步执行批判性分析任务。"""
+        self._reset_runtime_diagnostics()
+        target = context.get("target", "")
+
+        if not target:
+            return AgentResult(
+                agent_type=self.agent_type.value,
+                agent_name=self.name,
+                discoveries=[],
+                handoffs_created=0,
+                metadata=self._augment_metadata({"error": "No target specified"}),
+            )
+
+        search_context = await asyncio.to_thread(self._get_search_context, target)
+        if search_context:
+            context["_search_context"] = search_context
+
+        prompt = self._build_red_team_prompt(target, context, bool(search_context))
+        response = await self.think_with_discoveries_async(
+            prompt,
+            agent_types=["scout", "experience", "technical", "market"],
+            context=context,
+        )
+
+        discoveries = self._parse_and_store_discoveries(response, target)
+        discoveries = await self._ensure_min_discoveries_async(
+            discoveries,
+            target,
+            context,
+            self._build_deep_search_prompt,
+        )
+
+        return AgentResult(
+            agent_type=self.agent_type.value,
+            agent_name=self.name,
+            discoveries=[d.to_dict() for d in discoveries],
+            handoffs_created=0,
+            metadata=self._augment_metadata({
+                "target": target,
+                "discovery_count": len(discoveries),
+                "search_used": bool(search_context),
+            }),
         )
 
     def _get_search_context(self, target: str) -> str:

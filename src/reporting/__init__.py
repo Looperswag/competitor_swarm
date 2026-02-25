@@ -7,6 +7,7 @@ from src.reporting.citations import Citation, CitationManager
 from src.reporting.sections import SectionGenerator
 from src.reporting.formatters import Formatters
 from src.reporting.visualizer import HTMLReportGenerator, get_html_generator, reset_html_generator
+from src.reporting.pm_markdown_converter import PMMarkdownConverter
 
 __all__ = [
     "Citation",
@@ -14,6 +15,7 @@ __all__ = [
     "SectionGenerator",
     "Formatters",
     "HTMLReportGenerator",
+    "PMMarkdownConverter",
     "get_html_generator",
     "reset_html_generator",
 ]

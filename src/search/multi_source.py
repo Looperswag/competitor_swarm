@@ -92,6 +92,7 @@ class MultiSourceSearchTool(SearchTool):
         from src.search.providers.duckduckgo import DuckDuckGoSearchTool
         from src.search.providers.wikipedia import WikipediaSearchTool
         from src.search.providers.skill_fallback import SkillFallbackSearchTool
+        from src.search.providers.github import GitHubSearchTool
 
         # 只在尚未注册时注册
         if SearchProviderType.TAVILY not in registry.list_available():
@@ -102,6 +103,8 @@ class MultiSourceSearchTool(SearchTool):
             registry.register(SearchProviderType.WIKIPEDIA, WikipediaSearchTool)
         if SearchProviderType.SKILL_FALLBACK not in registry.list_available():
             registry.register(SearchProviderType.SKILL_FALLBACK, SkillFallbackSearchTool)
+        if SearchProviderType.GITHUB not in registry.list_available():
+            registry.register(SearchProviderType.GITHUB, GitHubSearchTool)
 
     @staticmethod
     def _get_default_providers_for_agent(agent_type: str | None) -> list[SearchProviderType]:
@@ -248,25 +251,35 @@ class MultiSourceSearchTool(SearchTool):
                     logger.warning(f"Search with {provider_type.value} failed: {e}")
 
         elif self._aggregation_mode == "parallel":
-            # 并行模式：使用多个搜索源
-            count = 0
+            # 并行模式：真正并发请求多个搜索源
+            import concurrent.futures
+
+            # 筛选通过配额检查的 provider
+            eligible: list[tuple[SearchProviderType, SearchTool]] = []
             for provider_type, provider in providers.items():
-                if count >= self._max_parallel_providers:
+                if len(eligible) >= self._max_parallel_providers:
                     break
+                if self._quota_manager and not self._quota_manager.check_and_consume(provider_type):
+                    continue
+                eligible.append((provider_type, provider))
 
-                # 检查配额
-                if self._quota_manager:
-                    if not self._quota_manager.check_and_consume(provider_type):
-                        continue
+            def _search_one(ptype: SearchProviderType, prov: SearchTool) -> tuple[SearchProviderType, list[SearchResult]]:
+                return ptype, prov.search(query, time_range, max_results)
 
-                try:
-                    provider_results = provider.search(query, time_range, max_results)
-                    if provider_results:
-                        results[provider_type] = provider_results
-                        logger.info(f"Got {len(provider_results)} results from {provider_type.value}")
-                        count += 1
-                except Exception as e:
-                    logger.warning(f"Search with {provider_type.value} failed: {e}")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(eligible))) as pool:
+                future_map = {
+                    pool.submit(_search_one, ptype, prov): ptype
+                    for ptype, prov in eligible
+                }
+                for future in concurrent.futures.as_completed(future_map, timeout=45):
+                    ptype = future_map[future]
+                    try:
+                        _, provider_results = future.result()
+                        if provider_results:
+                            results[ptype] = provider_results
+                            logger.info(f"Got {len(provider_results)} results from {ptype.value}")
+                    except Exception as e:
+                        logger.warning(f"Search with {ptype.value} failed: {e}")
 
         else:  # "all" 或其他
             # 使用所有搜索源

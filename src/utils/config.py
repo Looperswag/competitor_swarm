@@ -49,10 +49,10 @@ def load_agent_prompt(agent_type: str) -> str | None:
 class ModelConfig(BaseModel):
     """模型配置。"""
 
-    name: str = "glm-4.7"
-    temperature: float = 0.7
+    name: str = "glm-4.7"  # 默认模型
+    temperature: float = 1.0  # glm-4.7 默认值
     max_tokens: int = 4096
-    thinking_mode: bool = True
+    thinking_mode: bool = True  # 默认开启深度思考
     timeout: float = 120.0  # LLM 请求超时时间（秒）
 
 
@@ -111,6 +111,30 @@ class WebConfig(BaseModel):
     host: str = "127.0.0.1"
     port: int = 8000
     reload: bool = False
+    sync_timeout_seconds: int = 300
+    async_job_workers: int = 2
+    async_job_ttl_seconds: int = 3600
+
+
+class RecurringJobConfig(BaseModel):
+    """单个定时任务配置。"""
+
+    target: str
+    competitors: list[str] = Field(default_factory=list)
+    focus_areas: list[str] = Field(default_factory=list)
+    interval_hours: int = 24
+    alert_webhook: str | None = None
+    alert_threshold: float = 0.2
+    enabled: bool = True
+
+
+class RecurringJobsConfig(BaseModel):
+    """定时任务配置。"""
+
+    enabled: bool = False
+    storage_path: str = "data/scheduled_jobs.json"
+    max_concurrent: int = 2
+    jobs: list[RecurringJobConfig] = Field(default_factory=list)
 
 
 class SearchProviderConfig(BaseModel):
@@ -165,6 +189,63 @@ class DiscoveryLimitsConfig(BaseModel):
     max_per_agent: int = 50
 
 
+class EnvironmentConfig(BaseModel):
+    """运行环境治理配置。"""
+
+    signal_ttl_hours: int = 24
+    discovery_ttl_hours: int = 24
+    max_signals: int = 5000
+    max_discoveries: int = 1000
+    run_isolation: bool = True
+    discovery_migration_deadline: str = "2026-06-30"
+    pheromone_decay_lambda: float = 0.08
+    pheromone_reference_weight: float = 0.20
+    pheromone_validation_weight: float = 0.15
+    pheromone_debate_weight: float = 0.25
+    pheromone_freshness_weight: float = 0.05
+    pheromone_diffusion_weight: float = 0.10
+    semantic_link_threshold: float = 0.30
+    semantic_link_max_edges: int = 8
+
+
+class ValidationPhaseConfig(BaseModel):
+    """交叉验证阶段策略配置。"""
+
+    min_confidence: float = 0.3
+    min_strength: float = 0.0
+    confidence_weight: float = 0.7
+    strength_weight: float = 0.3
+    min_weighted_score: float = 0.35
+    max_signals_per_dimension: int = 20
+    verification_boost: float = 0.03
+    enable_quantitative_validation: bool = True
+    quantitative_tolerance_threshold: float = 0.2
+
+
+class DebatePhaseConfig(BaseModel):
+    """对抗辩论阶段策略配置。"""
+
+    rounds: int = 3
+    strength_step: float = 0.05
+    round_decay: float = 0.85
+    max_adjustment: float = 0.2
+    max_points_per_round: int = 10
+    verified_only: bool = True
+    rule_score_threshold: float = 0.35
+    llm_uncertainty_threshold: float = 0.15
+    llm_adjudication: bool = True
+    llm_batch_size: int = 10
+    llm_max_tokens: int = 128
+    llm_temperature: float = 0.0
+
+
+class PhaseExecutorConfig(BaseModel):
+    """四阶段执行引擎策略配置。"""
+
+    validation: ValidationPhaseConfig = Field(default_factory=ValidationPhaseConfig)
+    debate: DebatePhaseConfig = Field(default_factory=DebatePhaseConfig)
+
+
 class Config(BaseModel):
     """主配置类。"""
 
@@ -175,7 +256,10 @@ class Config(BaseModel):
     output: OutputConfig = Field(default_factory=OutputConfig)
     search: SearchConfig = Field(default_factory=SearchConfig)
     discovery_limits: DiscoveryLimitsConfig = Field(default_factory=DiscoveryLimitsConfig)
+    environment: EnvironmentConfig = Field(default_factory=EnvironmentConfig)
+    phase_executor: PhaseExecutorConfig = Field(default_factory=PhaseExecutorConfig)
     web: WebConfig = Field(default_factory=WebConfig)
+    recurring_jobs: RecurringJobsConfig = Field(default_factory=RecurringJobsConfig)
 
 
 def get_env(key: str, default: str | None = None) -> str:

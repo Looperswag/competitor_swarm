@@ -19,6 +19,7 @@ class SearchProviderType(str, Enum):
     TAVILY = "tavily"
     DUCKDUCKGO = "duckduckgo"
     WIKIPEDIA = "wikipedia"
+    GITHUB = "github"
     SKILL_FALLBACK = "skill_fallback"
     MULTI = "multi"
 

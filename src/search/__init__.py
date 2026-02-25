@@ -27,6 +27,7 @@ from src.search.providers import (
     DuckDuckGoSearchTool,
     WikipediaSearchTool,
     SkillFallbackSearchTool,
+    GitHubSearchTool,
 )
 
 __all__ = [
@@ -45,6 +46,7 @@ __all__ = [
     "DuckDuckGoSearchTool",
     "WikipediaSearchTool",
     "SkillFallbackSearchTool",
+    "GitHubSearchTool",
     # 向后兼容
     "TavilyMCPTool",
     "MCPHybridSearchTool",

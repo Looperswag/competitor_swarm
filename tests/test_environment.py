@@ -4,8 +4,19 @@ import pytest
 import tempfile
 import shutil
 from pathlib import Path
+from datetime import datetime, timedelta
 
 from src.environment import StigmergyEnvironment, Discovery, DiscoverySource
+from src.core import phase_executor as phase_executor_module
+
+if phase_executor_module.SIGNALS_AVAILABLE:
+    from src.schemas.signals import (
+        Signal,
+        SignalType,
+        Dimension,
+        Sentiment,
+        Actionability,
+    )
 
 
 class TestStigmergyEnvironment:
@@ -215,3 +226,144 @@ class TestStigmergyEnvironment:
         )
 
         assert self.env.discovery_count == 2
+
+    def test_discovery_compat_metadata_contains_migration_deadline(self):
+        """Discovery 兼容层应带迁移截止日期元数据。"""
+        discovery = self.env.add_discovery(
+            agent_type="scout",
+            content="兼容层发现",
+            source=DiscoverySource.ANALYSIS,
+            quality_score=0.6,
+        )
+
+        assert discovery.metadata.get("_compat_layer") is True
+        assert "migration_deadline" in discovery.metadata
+
+    def test_run_isolation_filters_discoveries(self):
+        """启用 run 隔离时，应只暴露当前 run 的数据。"""
+        env = StigmergyEnvironment(cache_path=self.temp_dir, run_isolation=True)
+
+        env.begin_run("run-a", clear=True)
+        env.add_discovery(
+            agent_type="scout",
+            content="run-a 内容",
+            source=DiscoverySource.WEBSITE,
+            quality_score=0.8,
+        )
+
+        env.begin_run("run-b", clear=False)
+        env.add_discovery(
+            agent_type="scout",
+            content="run-b 内容",
+            source=DiscoverySource.WEBSITE,
+            quality_score=0.8,
+        )
+
+        current = env.get_discoveries_by_agent("scout")
+        assert len(current) == 1
+        assert "run-b" in current[0].content
+
+        env.begin_run("run-a", clear=False)
+        run_a_items = env.get_discoveries_by_agent("scout")
+        assert len(run_a_items) == 1
+        assert "run-a" in run_a_items[0].content
+
+    @pytest.mark.skipif(not phase_executor_module.SIGNALS_AVAILABLE, reason="Signal schema not available")
+    def test_signal_ttl_eviction(self):
+        """Signal TTL 到期后应被自动清理。"""
+        env = StigmergyEnvironment(cache_path=self.temp_dir, signal_ttl_hours=1, max_signals=10)
+
+        old_signal = Signal(
+            id="old-signal",
+            signal_type=SignalType.INSIGHT,
+            dimension=Dimension.PRODUCT,
+            evidence="old evidence",
+            confidence=0.7,
+            strength=0.6,
+            sentiment=Sentiment.NEUTRAL,
+            actionability=Actionability.INFORMATIONAL,
+            author_agent="scout",
+            timestamp=(datetime.now() - timedelta(hours=2)).isoformat(),
+        )
+        new_signal = Signal(
+            id="new-signal",
+            signal_type=SignalType.INSIGHT,
+            dimension=Dimension.PRODUCT,
+            evidence="new evidence",
+            confidence=0.7,
+            strength=0.6,
+            sentiment=Sentiment.NEUTRAL,
+            actionability=Actionability.INFORMATIONAL,
+            author_agent="scout",
+            timestamp=datetime.now().isoformat(),
+        )
+
+        env.add_signal(old_signal)
+        env.add_signal(new_signal)
+
+        assert env.signal_count == 1
+        assert env.get_signal("old-signal") is None
+        assert env.get_signal("new-signal") is not None
+
+    @pytest.mark.skipif(not phase_executor_module.SIGNALS_AVAILABLE, reason="Signal schema not available")
+    def test_signal_capacity_eviction(self):
+        """Signal 超过最大容量时应淘汰最旧数据。"""
+        env = StigmergyEnvironment(cache_path=self.temp_dir, signal_ttl_hours=24, max_signals=2)
+
+        for idx in range(3):
+            signal = Signal(
+                id=f"signal-{idx}",
+                signal_type=SignalType.INSIGHT,
+                dimension=Dimension.PRODUCT,
+                evidence=f"evidence-{idx}",
+                confidence=0.7,
+                strength=0.6,
+                sentiment=Sentiment.NEUTRAL,
+                actionability=Actionability.INFORMATIONAL,
+                author_agent="scout",
+                timestamp=(datetime.now() + timedelta(seconds=idx)).isoformat(),
+            )
+            env.add_signal(signal)
+
+        assert env.signal_count == 2
+        assert env.get_signal("signal-0") is None
+        assert env.get_signal("signal-1") is not None
+        assert env.get_signal("signal-2") is not None
+
+    @pytest.mark.skipif(not phase_executor_module.SIGNALS_AVAILABLE, reason="Signal schema not available")
+    def test_signal_graph_edge_queries_include_reference_and_debate_edges(self):
+        """图边查询应返回引用边和辩论关系边。"""
+        env = StigmergyEnvironment(cache_path=self.temp_dir, signal_ttl_hours=24, max_signals=20)
+
+        base = Signal(
+            id="sig-base",
+            signal_type=SignalType.INSIGHT,
+            dimension=Dimension.PRODUCT,
+            evidence="base capability and onboarding",
+            confidence=0.8,
+            strength=0.7,
+            sentiment=Sentiment.NEUTRAL,
+            actionability=Actionability.INFORMATIONAL,
+            author_agent="scout",
+        )
+        ref = Signal(
+            id="sig-ref",
+            signal_type=SignalType.INSIGHT,
+            dimension=Dimension.TECHNICAL,
+            evidence="technical scalability references onboarding baseline",
+            confidence=0.75,
+            strength=0.65,
+            sentiment=Sentiment.NEUTRAL,
+            actionability=Actionability.SHORT_TERM,
+            author_agent="technical",
+            references=["sig-base"],
+        )
+        env.add_signal(base)
+        env.add_signal(ref)
+        env.register_debate_relation("sig-ref", "sig-base", support=False, weight=0.6)
+
+        edges = env.get_signal_graph_edges()
+        neighbors = env.get_signal_neighbors("sig-base")
+
+        assert any(edge.src == "sig-ref" and edge.dst == "sig-base" for edge in edges)
+        assert any(edge.edge_type.value == "debate_attack" for edge in neighbors)

@@ -2,10 +2,10 @@
 
 model:
   name: "glm-4.7"
-  temperature: 0.7
-  max_tokens: 4096
-  thinking_mode: true
-  timeout: 120.0  # LLM 请求超时时间（秒）
+  temperature: 1.0  # glm-4.7 默认 temperature 值
+  max_tokens: 1200
+  thinking_mode: false
+  timeout: 45.0  # LLM 请求超时时间（秒）
 
 cache:
   enabled: true
@@ -14,7 +14,7 @@ cache:
 
 scheduler:
   max_concurrent: 4
-  timeout: 600  # seconds per agent (increased from 300 to 600 to handle search-intensive agents)
+  timeout: 300  # seconds per analysis run timeout guard
 
 # 搜索配置
 search:
@@ -54,6 +54,12 @@ search:
       priority: 20
       daily_quota: 0
       rate_limit: null
+    github:
+      enabled: true
+      priority: 50
+      daily_quota: 0  # 0 表示无限制（受 GitHub API 速率限制）
+      rate_limit: 60  # 每小时请求数（未认证），认证后为 5000
+      api_key_env: "GITHUB_TOKEN"  # 可选，提高速率限制
 
   # Agent 特定的搜索配置
   agent_profiles:
@@ -65,7 +71,7 @@ search:
       preferred_providers: ["tavily", "duckduckgo"]
       max_results: 10
     technical:
-      preferred_providers: ["tavily", "duckduckgo"]
+      preferred_providers: ["tavily", "duckduckgo", "github"]  # 技术分析包含 GitHub
       max_results: 10
     market:
       preferred_providers: ["tavily", "duckduckgo"]
@@ -88,54 +94,101 @@ discovery_limits:
   target_per_agent: 30
   max_per_agent: 50
 
+# 运行环境治理（Signal 主数据模型，Discovery 兼容层）
+environment:
+  signal_ttl_hours: 24
+  discovery_ttl_hours: 24
+  max_signals: 5000
+  max_discoveries: 1000
+  run_isolation: true
+  discovery_migration_deadline: "2026-06-30"
+  pheromone_decay_lambda: 0.08
+  pheromone_reference_weight: 0.20
+  pheromone_validation_weight: 0.15
+  pheromone_debate_weight: 0.25
+  pheromone_freshness_weight: 0.05
+  pheromone_diffusion_weight: 0.10
+  semantic_link_threshold: 0.30
+  semantic_link_max_edges: 8
+
+# 四阶段执行引擎策略
+phase_executor:
+  # Phase 2: 交叉验证策略
+  validation:
+    min_confidence: 0.30
+    min_strength: 0.00
+    confidence_weight: 0.70
+    strength_weight: 0.30
+    min_weighted_score: 0.35
+    max_signals_per_dimension: 20
+    verification_boost: 0.03
+    enable_quantitative_validation: true
+    quantitative_tolerance_threshold: 0.20
+
+  # Phase 3: 对抗辩论策略
+  # rounds 从 3 减到 2：第 3 轮边际价值低，但增加 2 次串行 LLM 调用（~30-60s）
+  debate:
+    rounds: 2
+    strength_step: 0.05
+    round_decay: 0.85
+    max_adjustment: 0.20
+    max_points_per_round: 10
+    verified_only: true
+    rule_score_threshold: 0.35
+    llm_uncertainty_threshold: 0.15
+    llm_adjudication: true
+    llm_batch_size: 10
+    llm_max_tokens: 128
+    llm_temperature: 0.0
+
 agents:
   scout:
     name: "侦察专家"
-    min_discoveries: 15
-    target_discoveries: 30
-    max_discoveries: 50
+    min_discoveries: 6
+    target_discoveries: 10
+    max_discoveries: 15
     # system_prompt 已移至 prompts/scout.md
 
   experience:
     name: "体验专家"
-    min_discoveries: 15
-    target_discoveries: 30
-    max_discoveries: 50
+    min_discoveries: 6
+    target_discoveries: 10
+    max_discoveries: 15
     # system_prompt 已移至 prompts/experience.md
 
   technical:
     name: "技术分析专家"
-    min_discoveries: 20
-    target_discoveries: 30
-    max_discoveries: 50
+    min_discoveries: 6
+    target_discoveries: 10
+    max_discoveries: 15
     # system_prompt 已移至 prompts/technical.md
 
   market:
     name: "市场分析专家"
-    min_discoveries: 20
-    target_discoveries: 30
-    max_discoveries: 50
+    min_discoveries: 6
+    target_discoveries: 10
+    max_discoveries: 15
     # system_prompt 已移至 prompts/market.md
 
   red_team:
     name: "红队专家"
-    min_discoveries: 15
-    target_discoveries: 30
-    max_discoveries: 50
+    min_discoveries: 4
+    target_discoveries: 8
+    max_discoveries: 12
     # system_prompt 已移至 prompts/red_team.md
 
   blue_team:
     name: "蓝队专家"
-    min_discoveries: 15
-    target_discoveries: 30
-    max_discoveries: 50
+    min_discoveries: 4
+    target_discoveries: 8
+    max_discoveries: 12
     # system_prompt 已移至 prompts/blue_team.md
 
   elite:
     name: "综合分析专家"
-    min_discoveries: 5
-    target_discoveries: 10
-    max_discoveries: 20
+    min_discoveries: 2
+    target_discoveries: 4
+    max_discoveries: 8
     # system_prompt 已移至 prompts/elite.md
 
 output:
@@ -152,3 +205,22 @@ web:
   host: "127.0.0.1"  # 监听地址
   port: 8000  # 监听端口
   reload: false  # 开发模式自动重载
+  sync_timeout_seconds: 300  # 同步 API 请求超时时间（秒）
+  async_job_workers: 2  # 后台异步任务 worker 数量
+  async_job_ttl_seconds: 3600  # 任务结果保留时间（秒）
+
+# 定时任务配置
+recurring_jobs:
+  enabled: false  # 是否启用定时任务
+  storage_path: "data/scheduled_jobs.json"  # 任务持久化存储路径
+  max_concurrent: 2  # 最大并发执行数
+  # 预定义的定时任务示例（可通过 API 动态添加）
+  jobs: []
+    # 示例配置:
+    # - target: "豆包"
+    #   competitors: ["ChatGPT", "Claude"]
+    #   focus_areas: ["产品功能", "用户反馈"]
+    #   interval_hours: 24
+    #   alert_webhook: null  # 可选: webhook URL
+    #   alert_threshold: 0.2  # 变化超 20% 触发告警
+    #   enabled: true
