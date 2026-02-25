@@ -1,23 +1,6 @@
 # CompetitorSwarm
 
-![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python)
-![License](https://img.shields.io/badge/License-MIT-green)
-![Status](https://img.shields.io/badge/Status-Active-success)
-
 基于 **Swarm 模式** 的多 Agent 竞品分析系统，通过异构 Agent 协作实现多维度、深度的竞品分析。
-
----
-
-## 📑 快速导航
-
-| 章节 | 描述 |
-|------|------|
-| [快速开始](#-0-1-快速开始) | 5 步上手指南 |
-| [Why CompetitorSwarm](#-为什么选择-competitorswarm) | 与传统工具对比 |
-| [核心架构特点](#-核心架构特点) | Stigmergy、虚拟信息素等创新点 |
-| [数据流动详解](#-数据流动详解) | 四阶段完整数据流 |
-| [核心模块交互](#-核心模块交互) | 模块依赖关系图 |
-
 
 ---
 
